@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.Json;
+
 namespace IntervalsMcp;
 
 /// <summary>Configuración del servidor que no forma parte del cliente HTTP en sí.</summary>
@@ -36,9 +39,69 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
     public Task<string> ListEventsAsync(string? oldest, string? newest, CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/events" + BuildQuery(("oldest", oldest), ("newest", newest)), ct);
 
+    public Task<string> GetEventAsync(long eventId, CancellationToken ct = default) =>
+        GetAsync($"athlete/{AthleteId}/events/{eventId}", ct);
+
+    public Task<string> CreateEventAsync(
+        string startDateLocal, string name, string category, string? type, string? description, string? externalId, CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["start_date_local"] = startDateLocal,
+            ["name"] = name,
+            ["category"] = category,
+        };
+        if (type is not null) payload["type"] = type;
+        if (description is not null) payload["description"] = description;
+        if (externalId is not null) payload["external_id"] = externalId;
+
+        return SendJsonAsync(HttpMethod.Post, $"athlete/{AthleteId}/events", payload, ct);
+    }
+
+    public Task<string> UpdateEventAsync(
+        long eventId, string? startDateLocal, string? name, string? type, string? category, string? description, CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?>();
+        if (startDateLocal is not null) payload["start_date_local"] = startDateLocal;
+        if (name is not null) payload["name"] = name;
+        if (type is not null) payload["type"] = type;
+        if (category is not null) payload["category"] = category;
+        if (description is not null) payload["description"] = description;
+
+        return SendJsonAsync(HttpMethod.Put, $"athlete/{AthleteId}/events/{eventId}", payload, ct);
+    }
+
+    public async Task<string> DeleteEventAsync(long eventId, CancellationToken ct = default)
+    {
+        var response = await http.DeleteAsync($"athlete/{AthleteId}/events/{eventId}", ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"La solicitud a la API de Intervals.icu para borrar el evento {eventId} falló con {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
+        }
+
+        return string.IsNullOrWhiteSpace(body) ? $"{{\"deleted\":true,\"id\":{eventId}}}" : body;
+    }
+
     private async Task<string> GetAsync(string requestUri, CancellationToken ct)
     {
         var response = await http.GetAsync(requestUri, ct);
+        return await ReadOrThrowAsync(response, requestUri, ct);
+    }
+
+    private async Task<string> SendJsonAsync(HttpMethod method, string requestUri, object payload, CancellationToken ct)
+    {
+        using var request = new HttpRequestMessage(method, requestUri)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),
+        };
+        var response = await http.SendAsync(request, ct);
+        return await ReadOrThrowAsync(response, requestUri, ct);
+    }
+
+    private static async Task<string> ReadOrThrowAsync(HttpResponseMessage response, string requestUri, CancellationToken ct)
+    {
         var body = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {

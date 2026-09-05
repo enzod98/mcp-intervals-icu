@@ -76,9 +76,18 @@ de pasar por `dotnet run`.
 | `list_wellness` | HRV, FC en reposo, sueño, peso, CTL/ATL/ramp rate por rango de fechas |
 | `get_wellness` | Entrada de wellness de una fecha puntual |
 | `list_events` | Eventos planificados en el calendario (próximos entrenos, carreras) |
+| `get_event` | Detalle de un evento puntual del calendario |
+| `create_event` | Crea un entreno planificado, carrera o nota en el calendario |
+| `update_event` | Actualiza un evento existente (solo los campos que se pasan) |
+| `delete_event` | Elimina un evento del calendario (no se puede deshacer) |
 
 Todas devuelven el JSON crudo de la API de Intervals.icu (salvo `get_activity_streams`, que
 recorta streams largos a un máximo configurable de puntos para no saturar el contexto).
+
+Las últimas cuatro son de **escritura**: modifican tu calendario real en Intervals.icu.
+`create_event` acepta la sintaxis de texto plano de Intervals.icu para describir entrenos
+estructurados (ej. `"- 15m 55% Warmup\n3x\n- 1m 150%\n- 1m 50%\n- 15m 55% Cooldown"`), que la API
+parsea automáticamente a pasos con potencia/duración.
 
 ## Publicar en un VPS y usarlo desde cualquier dispositivo
 
