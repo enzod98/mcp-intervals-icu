@@ -1,0 +1,21 @@
+[Unit]
+Description=IntervalsMcp - servidor MCP para Intervals.icu
+After=network.target
+
+[Service]
+Type=simple
+User=intervalsmcp
+WorkingDirectory=/opt/intervalsmcp
+EnvironmentFile=/etc/intervalsmcp.env
+ExecStart=/usr/bin/dotnet /opt/intervalsmcp/IntervalsMcp.dll
+Restart=on-failure
+RestartSec=5
+
+# Endurecimiento básico del servicio (opcional pero recomendado)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/intervalsmcp
+
+[Install]
+WantedBy=multi-user.target

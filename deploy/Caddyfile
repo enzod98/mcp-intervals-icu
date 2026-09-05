@@ -1,0 +1,5 @@
+# Reemplazar por tu subdominio real, ej. mcp.tudominio.com
+# Caddy obtiene y renueva el certificado HTTPS automáticamente (Let's Encrypt).
+mcp.tudominio.com {
+    reverse_proxy 127.0.0.1:5170
+}
