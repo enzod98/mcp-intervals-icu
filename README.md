@@ -80,16 +80,39 @@ de pasar por `dotnet run`.
 Todas devuelven el JSON crudo de la API de Intervals.icu (salvo `get_activity_streams`, que
 recorta streams largos a un máximo configurable de puntos para no saturar el contexto).
 
-## Publicar en una VPS Linux y usarlo desde cualquier dispositivo
+## Publicar en un VPS y usarlo desde cualquier dispositivo
 
 Este modo levanta el servidor como un endpoint HTTP (`/mcp`) protegido por un token Bearer propio,
 para que puedas agregarlo como conector MCP remoto en Claude (web, mobile, desktop) y pedirle
 feedback de un entreno recién sincronizado desde donde estés.
 
-**Arquitectura:** Caddy en el VPS termina HTTPS en el puerto 443 y reenvía a Kestrel, que escucha
-solo en `127.0.0.1` — el proceso .NET nunca queda expuesto directamente a internet, solo el proxy.
+### Con Dokploy (recomendado)
 
-1. **Publicar el binario** (en tu máquina o directo en el VPS con el repo clonado):
+El repo incluye un [`Dockerfile`](Dockerfile) multi-stage (build con el SDK de .NET, runtime con
+la imagen de ASP.NET) ya probado localmente con `docker build` + `docker run`. Dokploy se encarga
+del reverse proxy y de HTTPS automático (Traefik + Let's Encrypt) — no hace falta Caddy ni systemd.
+
+1. En Dokploy, creá una nueva **Application** apuntando a este repo de GitHub, con build type
+   **Dockerfile** (`Dockerfile` en la raíz del repo).
+2. En **Environment Variables**, cargá:
+
+   | Variable | Valor |
+   |---|---|
+   | `INTERVALS_API_KEY` | tu API key de Intervals.icu |
+   | `INTERVALS_ATHLETE_ID` | tu athlete id, ej. `i12345678` |
+   | `MCP_AUTH_TOKEN` | un token largo y aleatorio, generado con `openssl rand -hex 32` |
+
+   (`MCP_TRANSPORT` y `ASPNETCORE_URLS` ya vienen fijados en el Dockerfile, no hace falta tocarlos.)
+3. En **Ports**, exponé el contenedor en el puerto `8080` (el que expone el Dockerfile).
+4. Configurá el **Domain** (subdominio con registro DNS apuntando al VPS) y activá HTTPS — Dokploy
+   emite el certificado solo.
+5. Deploy. Los logs del contenedor en Dokploy deberían mostrar `Now listening on: http://0.0.0.0:8080`.
+
+### Sin Dokploy (systemd + Caddy, manual)
+
+Si en algún momento corrés esto en un VPS sin Dokploy:
+
+1. **Publicar el binario**:
 
    ```bash
    dotnet publish IntervalsMcp -c Release -r linux-x64 --self-contained false -o out
@@ -98,8 +121,7 @@ solo en `127.0.0.1` — el proceso .NET nunca queda expuesto directamente a inte
    Copiá el contenido de `out/` a `/opt/intervalsmcp` en el VPS.
 
 2. **Variables de entorno**: copiá [`deploy/intervalsmcp.env.example`](deploy/intervalsmcp.env.example)
-   a `/etc/intervalsmcp.env`, completá los valores reales (API key, athlete id, y un
-   `MCP_AUTH_TOKEN` generado con `openssl rand -hex 32`) y restringí permisos:
+   a `/etc/intervalsmcp.env`, completá los valores reales y restringí permisos:
 
    ```bash
    sudo chmod 600 /etc/intervalsmcp.env
@@ -113,11 +135,8 @@ solo en `127.0.0.1` — el proceso .NET nunca queda expuesto directamente a inte
    sudo systemctl enable --now intervalsmcp
    ```
 
-4. **HTTPS con Caddy**: instalá [Caddy](https://caddyfile.com/), usá
-   [`deploy/Caddyfile`](deploy/Caddyfile) como base (reemplazando el dominio) y recargalo. Caddy
-   gestiona el certificado Let's Encrypt automáticamente. Necesitás un dominio/subdominio con un
-   registro DNS A apuntando a la IP del VPS.
-
+4. **HTTPS con Caddy**: instalá [Caddy](https://caddyserver.com/), usá
+   [`deploy/Caddyfile`](deploy/Caddyfile) como base (reemplazando el dominio) y recargalo.
 5. **Firewall**: solo 80/443 (Caddy) deberían estar abiertos al público; el puerto 5170 de Kestrel
    no debería ser alcanzable desde afuera del VPS.
 
@@ -135,10 +154,10 @@ consulta Intervals.icu en tiempo real a través del VPS.
 ### Notas de seguridad
 
 - `MCP_AUTH_TOKEN` es la única barrera entre internet y tu servidor: guardalo como una contraseña,
-  no lo compartas ni lo subas a git (`/etc/intervalsmcp.env` vive fuera del repo, y
-  `deploy/intervalsmcp.env.example` solo tiene placeholders).
-- Si sospechás que el token se filtró, generá uno nuevo, actualizá `/etc/intervalsmcp.env` y
-  reiniciá el servicio (`sudo systemctl restart intervalsmcp`); el conector viejo dejará de
-  funcionar de inmediato.
+  no lo compartas ni lo subas a git. En Dokploy vive solo en las Environment Variables de la app,
+  nunca en el repo.
+- Si sospechás que el token se filtró, generá uno nuevo, actualizalo en Dokploy (o en
+  `/etc/intervalsmcp.env` + `sudo systemctl restart intervalsmcp` en el modo manual) y redeployá;
+  el conector viejo dejará de funcionar de inmediato.
 - Tu `INTERVALS_API_KEY` nunca viaja hacia el cliente MCP: vive solo en el servidor y se usa para
   hablarle a la API de Intervals.icu internamente.
