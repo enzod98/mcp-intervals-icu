@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ModelContextProtocol;
 
 namespace IntervalsMcp;
 
@@ -77,8 +78,8 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         var body = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"La solicitud a la API de Intervals.icu para borrar el evento {eventId} falló con {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
+            throw new McpException(
+                $"La solicitud a la API de Intervals.icu para borrar el evento {eventId} falló con {(int)response.StatusCode} {response.ReasonPhrase}: {Truncate(body)}");
         }
 
         return string.IsNullOrWhiteSpace(body) ? $"{{\"deleted\":true,\"id\":{eventId}}}" : body;
@@ -105,12 +106,17 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         var body = await response.Content.ReadAsStringAsync(ct);
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException(
-                $"La solicitud a la API de Intervals.icu a '{requestUri}' falló con {(int)response.StatusCode} {response.ReasonPhrase}: {body}");
+            throw new McpException(
+                $"La solicitud a la API de Intervals.icu a '{requestUri}' falló con {(int)response.StatusCode} {response.ReasonPhrase}: {Truncate(body)}");
         }
 
         return body;
     }
+
+    // Los cuerpos de error de Intervals.icu son JSON chico, pero por las dudas evitamos volcar
+    // una respuesta enorme (ej. una página de error HTML de un proxy) dentro del mensaje de la excepción.
+    private static string Truncate(string body, int maxLength = 500) =>
+        body.Length <= maxLength ? body : body[..maxLength] + "…";
 
     private static string BuildQuery(params (string Key, string? Value)[] parameters)
     {
