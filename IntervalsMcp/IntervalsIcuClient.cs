@@ -31,6 +31,44 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
     public Task<string> GetActivityStreamsRawAsync(string activityId, string types, CancellationToken ct = default) =>
         GetAsync($"activity/{activityId}/streams" + BuildQuery(("types", types)), ct);
 
+    public async Task<string> UpdateActivityAsync(
+        string activityId,
+        string? name,
+        string? description,
+        string? type,
+        double? perceivedExertion,
+        int? feel,
+        string[]? tags,
+        bool? commute,
+        bool? trainer,
+        CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?>();
+
+        // El PUT de Intervals.icu no hace merge parcial real para "name": si una actividad nunca
+        // tuvo un nombre propio, omitir el campo hace que la API le calcule uno nuevo (efecto
+        // secundario observado empíricamente). Para no renombrar la actividad sin querer, si no
+        // se pidió cambiar el nombre fijamos explícitamente el que ya tiene.
+        payload["name"] = name ?? await GetCurrentActivityNameAsync(activityId, ct);
+
+        if (description is not null) payload["description"] = description;
+        if (type is not null) payload["type"] = type;
+        if (perceivedExertion is not null) payload["perceived_exertion"] = perceivedExertion;
+        if (feel is not null) payload["feel"] = feel;
+        if (tags is not null) payload["tags"] = tags;
+        if (commute is not null) payload["commute"] = commute;
+        if (trainer is not null) payload["trainer"] = trainer;
+
+        return await SendJsonAsync(HttpMethod.Put, $"activity/{activityId}", payload, ct);
+    }
+
+    private async Task<string?> GetCurrentActivityNameAsync(string activityId, CancellationToken ct)
+    {
+        var current = await GetAsync($"activity/{activityId}", ct);
+        using var doc = JsonDocument.Parse(current);
+        return doc.RootElement.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+    }
+
     public Task<string> ListWellnessAsync(string? oldest, string? newest, CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/wellness" + BuildQuery(("oldest", oldest), ("newest", newest)), ct);
 

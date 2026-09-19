@@ -73,6 +73,7 @@ de pasar por `dotnet run`.
 | `list_activities` | Lista de actividades registradas (por defecto, últimos 90 días) |
 | `get_activity` | Detalle completo de una actividad, con intervalos/laps |
 | `get_activity_streams` | Series de tiempo (potencia, FC, cadencia, altitud, GPS) de una actividad, con downsampling automático |
+| `update_activity` | Actualiza nombre, notas, RPE/feel, tags o tipo de una actividad ya registrada (no toca datos grabados como ritmo/potencia/FC) |
 | `list_wellness` | HRV, FC en reposo, sueño, peso, CTL/ATL/ramp rate por rango de fechas |
 | `get_wellness` | Entrada de wellness de una fecha puntual |
 | `list_events` | Eventos planificados en el calendario (próximos entrenos, carreras) |

@@ -39,6 +39,25 @@ public static class ActivityTools
         return Downsample(raw, maxPoints);
     }
 
+    [McpServerTool, Description(
+        "Actualiza metadata de una actividad ya registrada en Intervals.icu: nombre, notas/descripción, tipo de deporte, " +
+        "RPE, feel, tags, o si fue commute/en rodillo. Solo se modifican los campos que se pasan. " +
+        "No permite tocar datos grabados (ritmo, potencia, FC, distancia, GPS) porque esos vienen del dispositivo y son de solo lectura en la API. " +
+        "Nota: Intervals.icu no permite actualizar actividades que llegaron sincronizadas desde Strava.")]
+    public static Task<string> UpdateActivity(
+        IntervalsIcuClient client,
+        [Description("El id de la actividad en Intervals.icu, ej. i12345678.")] string activityId,
+        [Description("Nuevo nombre de la actividad. Omitir para no cambiarlo.")] string? name = null,
+        [Description("Notas/descripción del entreno. Omitir para no cambiarla.")] string? description = null,
+        [Description("Nuevo tipo de deporte (Run, Ride, Swim, etc). Omitir para no cambiarlo.")] string? type = null,
+        [Description("Esfuerzo percibido (RPE), típicamente 1-10. Omitir para no cambiarlo.")] double? perceivedExertion = null,
+        [Description("Cómo se sintió el atleta, escala 1-5 (1 muy bien, 5 muy mal). Omitir para no cambiarlo.")] int? feel = null,
+        [Description("Lista de tags para la actividad. Reemplaza los tags existentes. Omitir para no cambiarlos.")] string[]? tags = null,
+        [Description("Marcar como trayecto commute. Omitir para no cambiarlo.")] bool? commute = null,
+        [Description("Marcar como hecho en rodillo/indoor trainer. Omitir para no cambiarlo.")] bool? trainer = null,
+        CancellationToken ct = default)
+        => client.UpdateActivityAsync(activityId, name, description, type, perceivedExertion, feel, tags, commute, trainer, ct);
+
     private static string Downsample(string json, int maxPoints)
     {
         var node = JsonNode.Parse(json);
