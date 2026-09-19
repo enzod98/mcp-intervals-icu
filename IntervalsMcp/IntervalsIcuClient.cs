@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ModelContextProtocol;
 
 namespace IntervalsMcp;
@@ -21,6 +22,89 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
 
     public Task<string> GetSportSettingsAsync(CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/sport-settings", ct);
+
+    public Task<string> UpdateAthleteProfileAsync(
+        string? name,
+        double? weight,
+        string? sex,
+        string? city,
+        string? state,
+        string? country,
+        string? timezone,
+        string? bio,
+        CancellationToken ct = default)
+    {
+        // A diferencia de "name" en actividades, este endpoint sí hace merge parcial real:
+        // se verificó mandando solo {"bio": "..."} y confirmando que Garmin/Strava/icu_api_key
+        // volvieron intactos en la respuesta. Por eso acá alcanza con un PUT parcial normal,
+        // sin necesidad de leer y reenviar el objeto completo (que incluye credenciales sensibles).
+        // Nota: el campo "weight" del schema no persiste nada; el peso real vive en "icu_weight"
+        // (verificado empíricamente). "height" tampoco persiste bajo ningún nombre confirmado,
+        // por eso no se expone como parámetro.
+        var changes = new Dictionary<string, object?>();
+        if (name is not null) changes["name"] = name;
+        if (weight is not null) changes["icu_weight"] = weight;
+        if (sex is not null) changes["sex"] = sex;
+        if (city is not null) changes["city"] = city;
+        if (state is not null) changes["state"] = state;
+        if (country is not null) changes["country"] = country;
+        if (timezone is not null) changes["timezone"] = timezone;
+        if (bio is not null) changes["bio"] = bio;
+
+        return SendJsonAsync(HttpMethod.Put, $"athlete/{AthleteId}", changes, ct);
+    }
+
+    public Task<string> UpdateSportSettingsAsync(
+        string sportType,
+        int? lthr,
+        int? maxHr,
+        int[]? hrZones,
+        string[]? hrZoneNames,
+        double? thresholdPace,
+        int? ftp,
+        int? indoorFtp,
+        int? sweetSpotMin,
+        int? sweetSpotMax,
+        CancellationToken ct = default)
+    {
+        var changes = new Dictionary<string, object?>();
+        if (lthr is not null) changes["lthr"] = lthr;
+        if (maxHr is not null) changes["max_hr"] = maxHr;
+        if (hrZones is not null) changes["hr_zones"] = hrZones;
+        if (hrZoneNames is not null) changes["hr_zone_names"] = hrZoneNames;
+        if (thresholdPace is not null) changes["threshold_pace"] = thresholdPace;
+        if (ftp is not null) changes["ftp"] = ftp;
+        if (indoorFtp is not null) changes["indoor_ftp"] = indoorFtp;
+        if (sweetSpotMin is not null) changes["sweet_spot_min"] = sweetSpotMin;
+        if (sweetSpotMax is not null) changes["sweet_spot_max"] = sweetSpotMax;
+
+        var uri = $"athlete/{AthleteId}/sport-settings/{sportType}";
+        return MergeAndPutAsync(uri, uri, changes, ct);
+    }
+
+    // El PUT de Intervals.icu no garantiza merge parcial real (lo confirmamos con el bug de "name"
+    // en actividades). El perfil y sport-settings son objetos grandes con muchos campos ajenos a lo
+    // que queremos tocar (credenciales de integraciones, config de sync, etc.), así que acá nunca
+    // mandamos un PUT parcial: siempre leemos el objeto completo actual, pisamos solo los campos
+    // pedidos, y devolvemos el objeto entero. Así el comportamiento real de la API no importa.
+    private async Task<string> MergeAndPutAsync(string getUri, string putUri, Dictionary<string, object?> changes, CancellationToken ct)
+    {
+        var current = await GetAsync(getUri, ct);
+        var node = JsonNode.Parse(current) as JsonObject ?? throw new McpException(
+            $"La respuesta de Intervals.icu para '{getUri}' no fue el objeto esperado, no se puede actualizar de forma segura.");
+
+        foreach (var (key, value) in changes)
+        {
+            node[key] = JsonSerializer.SerializeToNode(value);
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Put, putUri)
+        {
+            Content = new StringContent(node.ToJsonString(), Encoding.UTF8, "application/json"),
+        };
+        var response = await http.SendAsync(request, ct);
+        return await ReadOrThrowAsync(response, putUri, ct);
+    }
 
     public Task<string> ListActivitiesAsync(string? oldest, string? newest, int? limit, CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/activities" + BuildQuery(("oldest", oldest), ("newest", newest), ("limit", limit?.ToString())), ct);
