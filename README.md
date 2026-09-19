@@ -87,6 +87,19 @@ de pasar por `dotnet run`.
 Todas devuelven el JSON crudo de la API de Intervals.icu (salvo `get_activity_streams`, que
 recorta streams largos a un máximo configurable de puntos para no saturar el contexto).
 
+### Nota sobre `update_activity` y el nombre de la actividad
+
+Se detectó (probando contra una cuenta real con Strava conectado) que actualizar `description` u
+otros campos de una actividad en la misma request que `name` puede hacer que Intervals.icu
+resetee el nombre a uno autogenerado estilo Strava (p. ej. "Evening Run" → "Carrera vespertina").
+Esto ocurrió incluso mandando `name` explícito junto con `description` en la misma llamada, y
+parece estar relacionado con la opción **"Update Strava name and description"** de la sección
+Connections de la cuenta (Strava re-sincroniza su propio nombre por defecto sobre el que se puso
+en Intervals.icu). Para evitarlo, `update_activity` **siempre manda el nombre en un PUT separado,
+al final**, después de aplicar el resto de los cambios — así el nombre queda firme sin importar
+qué dispare la API. Si no usás la sincronización de nombre/descripción con Strava, desactivar esa
+opción en Connections elimina la causa de raíz.
+
 Las últimas cuatro son de **escritura**: modifican tu calendario real en Intervals.icu.
 `create_event` acepta la sintaxis de texto plano de Intervals.icu para describir entrenos
 estructurados (ej. `"- 15m 55% Warmup\n3x\n- 1m 150%\n- 1m 50%\n- 15m 55% Cooldown"`), que la API

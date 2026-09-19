@@ -127,23 +127,31 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         bool? trainer,
         CancellationToken ct = default)
     {
-        var payload = new Dictionary<string, object?>();
+        // Fijamos qué nombre debe quedar ANTES de tocar cualquier otro campo, por si hace falta
+        // reponerlo después.
+        var nameToKeep = name ?? await GetCurrentActivityNameAsync(activityId, ct);
 
-        // El PUT de Intervals.icu no hace merge parcial real para "name": si una actividad nunca
-        // tuvo un nombre propio, omitir el campo hace que la API le calcule uno nuevo (efecto
-        // secundario observado empíricamente). Para no renombrar la actividad sin querer, si no
-        // se pidió cambiar el nombre fijamos explícitamente el que ya tiene.
-        payload["name"] = name ?? await GetCurrentActivityNameAsync(activityId, ct);
+        var otherChanges = new Dictionary<string, object?>();
+        if (description is not null) otherChanges["description"] = description;
+        if (type is not null) otherChanges["type"] = type;
+        if (perceivedExertion is not null) otherChanges["perceived_exertion"] = perceivedExertion;
+        if (feel is not null) otherChanges["feel"] = feel;
+        if (tags is not null) otherChanges["tags"] = tags;
+        if (commute is not null) otherChanges["commute"] = commute;
+        if (trainer is not null) otherChanges["trainer"] = trainer;
 
-        if (description is not null) payload["description"] = description;
-        if (type is not null) payload["type"] = type;
-        if (perceivedExertion is not null) payload["perceived_exertion"] = perceivedExertion;
-        if (feel is not null) payload["feel"] = feel;
-        if (tags is not null) payload["tags"] = tags;
-        if (commute is not null) payload["commute"] = commute;
-        if (trainer is not null) payload["trainer"] = trainer;
+        if (otherChanges.Count > 0)
+        {
+            // Actualizar "description" (u otros campos) junto con "name" en la misma request puede
+            // hacer que Intervals.icu resetee el nombre a uno autogenerado (parece un re-sync con
+            // Strava, activado por la opción "Update Strava name and description" de la cuenta;
+            // confirmado empíricamente incluso mandando "name" explícito junto con "description").
+            // Por eso "name" siempre se manda en un PUT separado y al final, que sí queda firme.
+            await SendJsonAsync(HttpMethod.Put, $"activity/{activityId}", otherChanges, ct);
+        }
 
-        return await SendJsonAsync(HttpMethod.Put, $"activity/{activityId}", payload, ct);
+        return await SendJsonAsync(
+            HttpMethod.Put, $"activity/{activityId}", new Dictionary<string, object?> { ["name"] = nameToKeep }, ct);
     }
 
     private async Task<string?> GetCurrentActivityNameAsync(string activityId, CancellationToken ct)
