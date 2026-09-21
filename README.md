@@ -75,7 +75,9 @@ de pasar por `dotnet run`.
 | `list_activities` | Lista de actividades registradas (por defecto, últimos 90 días) |
 | `get_activity` | Detalle completo de una actividad, con intervalos/laps |
 | `get_activity_streams` | Series de tiempo (potencia, FC, cadencia, altitud, GPS) de una actividad, con downsampling automático |
-| `update_activity` | Actualiza nombre, notas, RPE/feel, tags o tipo de una actividad ya registrada (no toca datos grabados como ritmo/potencia/FC) |
+| `update_activity` | Actualiza nombre, descripción (pública, sincroniza con Strava), RPE/feel, tags o tipo de una actividad ya registrada (no toca datos grabados como ritmo/potencia/FC) |
+| `list_activity_notes` | Lista los comentarios/notas privadas de una actividad (nunca salen de Intervals.icu) |
+| `add_activity_note` | Deja un comentario/nota privada en una actividad — usar para notas personales, no `update_activity`'s `description` |
 | `list_wellness` | HRV, FC en reposo, sueño, peso, CTL/ATL/ramp rate por rango de fechas |
 | `get_wellness` | Entrada de wellness de una fecha puntual |
 | `list_events` | Eventos planificados en el calendario (próximos entrenos, carreras) |
@@ -100,7 +102,19 @@ al final**, después de aplicar el resto de los cambios — así el nombre queda
 qué dispare la API. Si no usás la sincronización de nombre/descripción con Strava, desactivar esa
 opción en Connections elimina la causa de raíz.
 
-Las últimas cuatro son de **escritura**: modifican tu calendario real en Intervals.icu.
+### `description` vs notas privadas
+
+Intervals.icu tiene dos campos de texto distintos para una actividad, y es fácil confundirlos:
+
+- **`description`** (lo que edita `update_activity`) — es pública y **sincroniza con Strava**.
+  Cualquiera que vea la actividad en Strava la ve.
+- **Notas/comentarios** (`list_activity_notes` / `add_activity_note`, vía
+  `/activity/{id}/messages`) — quedan **solo en Intervals.icu**, nunca se sincronizan a Strava.
+
+Para notas personales de entrenamiento (sensaciones, fallas de sensores, RPE subjetivo, etc.) usar
+`add_activity_note`, no el `description` de `update_activity`.
+
+Las últimas herramientas de eventos son de **escritura**: modifican tu calendario real en Intervals.icu.
 `create_event` acepta la sintaxis de texto plano de Intervals.icu para describir entrenos
 estructurados (ej. `"- 15m 55% Warmup\n3x\n- 1m 150%\n- 1m 50%\n- 15m 55% Cooldown"`), que la API
 parsea automáticamente a pasos con potencia/duración.

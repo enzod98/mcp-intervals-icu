@@ -58,6 +58,26 @@ public static class ActivityTools
         CancellationToken ct = default)
         => client.UpdateActivityAsync(activityId, name, description, type, perceivedExertion, feel, tags, commute, trainer, ct);
 
+    [McpServerTool, Description(
+        "Lista los comentarios/notas privadas de una actividad en Intervals.icu. A diferencia de la descripción " +
+        "(que sincroniza con Strava y es pública), estas notas nunca salen de Intervals.icu.")]
+    public static Task<string> ListActivityNotes(
+        IntervalsIcuClient client,
+        [Description("El id de la actividad en Intervals.icu, ej. i12345678.")] string activityId,
+        CancellationToken ct = default)
+        => client.ListActivityNotesAsync(activityId, ct);
+
+    [McpServerTool, Description(
+        "Deja un comentario/nota privada en una actividad de Intervals.icu. A diferencia de \"description\" en " +
+        "update_activity (que sincroniza con Strava y queda pública), esta nota nunca sale de Intervals.icu. " +
+        "Usar esta herramienta para notas personales de entrenamiento.")]
+    public static Task<string> AddActivityNote(
+        IntervalsIcuClient client,
+        [Description("El id de la actividad en Intervals.icu, ej. i12345678.")] string activityId,
+        [Description("El contenido de la nota.")] string content,
+        CancellationToken ct = default)
+        => client.AddActivityNoteAsync(activityId, content, ct);
+
     private static string Downsample(string json, int maxPoints)
     {
         var node = JsonNode.Parse(json);

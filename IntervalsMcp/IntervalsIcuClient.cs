@@ -115,6 +115,12 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
     public Task<string> GetActivityStreamsRawAsync(string activityId, string types, CancellationToken ct = default) =>
         GetAsync($"activity/{activityId}/streams" + BuildQuery(("types", types)), ct);
 
+    public Task<string> ListActivityNotesAsync(string activityId, CancellationToken ct = default) =>
+        GetAsync($"activity/{activityId}/messages", ct);
+
+    public Task<string> AddActivityNoteAsync(string activityId, string content, CancellationToken ct = default) =>
+        SendJsonAsync(HttpMethod.Post, $"activity/{activityId}/messages", new Dictionary<string, object?> { ["content"] = content }, ct);
+
     public async Task<string> UpdateActivityAsync(
         string activityId,
         string? name,
