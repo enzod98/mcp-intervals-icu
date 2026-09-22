@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
 using IntervalsMcp;
@@ -7,6 +8,13 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+// La API de Intervals.icu usa "." como separador decimal (JSON estándar). Si el contenedor corre
+// con una cultura donde "." es separador de miles (ej. es-*), un Parse/ToString sin cultura
+// explícita puede corromper números silenciosamente (ej. "21097.5" -> 210975). Fijamos invariant
+// culture para todo el proceso para eliminar esa clase de bug de raíz.
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var apiKey = Environment.GetEnvironmentVariable("INTERVALS_API_KEY");
 if (string.IsNullOrWhiteSpace(apiKey))

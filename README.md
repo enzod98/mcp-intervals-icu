@@ -73,12 +73,14 @@ de pasar por `dotnet run`.
 | `update_athlete_profile` | Actualiza nombre, peso, sexo, ubicación, zona horaria o bio del atleta |
 | `update_sport_settings` | Actualiza LTHR, FC máxima, zonas de FC, ritmo/potencia de umbral y sweet spot de un deporte puntual |
 | `list_gear` | Equipo del atleta (zapatillas, bicicletas) con kilometraje y horas acumuladas |
+| `update_gear` | Renombra, agrega notas o marca como retirado un equipo (no reasigna equipo en una actividad, ver `update_activity`) |
 | `get_best_efforts` | Tabla de PRs (400m a 42K) por período, con la actividad donde se logró cada marca |
+| `get_race_predictions` | Predicción de tiempos de carrera por distancia, calculada con el modelo de Critical Speed de la curva de ritmo |
 | `get_period_summary` | Resumen agregado de un rango de fechas: volumen, carga, desglose por deporte y evolución de CTL/ATL |
 | `list_activities` | Lista de actividades registradas (por defecto, últimos 90 días) |
 | `get_activity` | Detalle completo de una actividad, con intervalos/laps |
 | `get_activity_streams` | Series de tiempo (potencia, FC, cadencia, altitud, GPS) de una actividad, con downsampling automático |
-| `update_activity` | Actualiza nombre, descripción (pública, sincroniza con Strava), RPE/feel, tags o tipo de una actividad ya registrada (no toca datos grabados como ritmo/potencia/FC) |
+| `update_activity` | Actualiza nombre, descripción (pública, sincroniza con Strava), RPE/feel, tags, tipo o equipo (zapatilla/bici) de una actividad ya registrada (no toca datos grabados como ritmo/potencia/FC) |
 | `list_activity_notes` | Lista los comentarios/notas privadas de una actividad (nunca salen de Intervals.icu) |
 | `add_activity_note` | Deja un comentario/nota privada en una actividad — usar para notas personales, no `update_activity`'s `description` |
 | `list_wellness` | HRV, FC en reposo, sueño, peso, CTL/ATL/ramp rate por rango de fechas |
@@ -118,6 +120,25 @@ Intervals.icu tiene dos campos de texto distintos para una actividad, y es fáci
 
 Para notas personales de entrenamiento (sensaciones, fallas de sensores, RPE subjetivo, etc.) usar
 `add_activity_note`, no el `description` de `update_activity`.
+
+### `get_race_predictions` no es un endpoint de Intervals.icu
+
+Intervals.icu no expone un endpoint de predicción de tiempos de carrera. La herramienta reutiliza
+el modelo de **Critical Speed** (Monod-Scherrer) que ya viene incluido en la respuesta de
+`pace-curves` (los mismos datos que usa `get_best_efforts`) y calcula
+`tiempo = (distancia - dPrime) / criticalSpeed`. Es más confiable entre 3K y maratón; para sprints
+o ultra-distancias muy alejadas del rango de datos con que se ajustó el modelo, la predicción
+pierde precisión.
+
+### Cultura invariante
+
+La API de Intervals.icu usa "." como separador decimal (estándar JSON). Si el proceso corriera con
+una cultura donde "." es separador de miles (ej. `es-*`), parsear un string como `"21097.5"` con
+`double.Parse` sin especificar cultura puede devolver `210975` en silencio — se detectó este bug
+real en `get_race_predictions`. Por eso `Program.cs` fija `CultureInfo.DefaultThreadCurrentCulture`
+a `InvariantCulture` al arrancar el proceso; cualquier `Parse`/`ToString` numérico nuevo que se
+agregue no necesita especificar cultura explícita, pero tampoco debería asumir una cultura no
+invariante.
 
 Las últimas herramientas de eventos son de **escritura**: modifican tu calendario real en Intervals.icu.
 `create_event` acepta la sintaxis de texto plano de Intervals.icu para describir entrenos

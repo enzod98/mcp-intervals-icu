@@ -36,6 +36,16 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
     public Task<string> ListGearAsync(CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/gear", ct);
 
+    public Task<string> UpdateGearAsync(string gearId, string? name, string? notes, string? retired, CancellationToken ct = default)
+    {
+        var changes = new Dictionary<string, object?>();
+        if (name is not null) changes["name"] = name;
+        if (notes is not null) changes["notes"] = notes;
+        if (retired is not null) changes["retired"] = retired;
+
+        return SendJsonAsync(HttpMethod.Put, $"athlete/{AthleteId}/gear/{gearId}", changes, ct);
+    }
+
     public Task<string> GetPaceCurvesRawAsync(string sportType, string curves, CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/pace-curves.json" + BuildQuery(("type", sportType), ("curves", curves)), ct);
 
@@ -147,6 +157,7 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         string[]? tags,
         bool? commute,
         bool? trainer,
+        string? gearId,
         CancellationToken ct = default)
     {
         // Fijamos qué nombre debe quedar ANTES de tocar cualquier otro campo, por si hace falta
@@ -161,6 +172,7 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         if (tags is not null) otherChanges["tags"] = tags;
         if (commute is not null) otherChanges["commute"] = commute;
         if (trainer is not null) otherChanges["trainer"] = trainer;
+        if (gearId is not null) otherChanges["gear"] = new Dictionary<string, object?> { ["id"] = gearId };
 
         if (otherChanges.Count > 0)
         {

@@ -41,7 +41,7 @@ public static class ActivityTools
 
     [McpServerTool, Description(
         "Actualiza metadata de una actividad ya registrada en Intervals.icu: nombre, notas/descripción, tipo de deporte, " +
-        "RPE, feel, tags, o si fue commute/en rodillo. Solo se modifican los campos que se pasan. " +
+        "RPE, feel, tags, si fue commute/en rodillo, o el equipo (zapatilla/bici) usado. Solo se modifican los campos que se pasan. " +
         "No permite tocar datos grabados (ritmo, potencia, FC, distancia, GPS) porque esos vienen del dispositivo y son de solo lectura en la API. " +
         "Nota: Intervals.icu no permite actualizar actividades que llegaron sincronizadas desde Strava.")]
     public static Task<string> UpdateActivity(
@@ -55,8 +55,9 @@ public static class ActivityTools
         [Description("Lista de tags para la actividad. Reemplaza los tags existentes. Omitir para no cambiarlos.")] string[]? tags = null,
         [Description("Marcar como trayecto commute. Omitir para no cambiarlo.")] bool? commute = null,
         [Description("Marcar como hecho en rodillo/indoor trainer. Omitir para no cambiarlo.")] bool? trainer = null,
+        [Description("Id del equipo (zapatilla/bici, ver list_gear) a asignarle a esta actividad, ej. \"g11714419\". Útil para corregir una asignación errónea de Garmin/Strava. Omitir para no cambiarlo.")] string? gearId = null,
         CancellationToken ct = default)
-        => client.UpdateActivityAsync(activityId, name, description, type, perceivedExertion, feel, tags, commute, trainer, ct);
+        => client.UpdateActivityAsync(activityId, name, description, type, perceivedExertion, feel, tags, commute, trainer, gearId, ct);
 
     [McpServerTool, Description(
         "Lista los comentarios/notas privadas de una actividad en Intervals.icu. A diferencia de la descripción " +
