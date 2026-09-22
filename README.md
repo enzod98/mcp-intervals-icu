@@ -73,6 +73,8 @@ de pasar por `dotnet run`.
 | `update_athlete_profile` | Actualiza nombre, peso, sexo, ubicación, zona horaria o bio del atleta |
 | `update_sport_settings` | Actualiza LTHR, FC máxima, zonas de FC, ritmo/potencia de umbral y sweet spot de un deporte puntual |
 | `list_gear` | Equipo del atleta (zapatillas, bicicletas) con kilometraje y horas acumuladas |
+| `get_best_efforts` | Tabla de PRs (400m a 42K) por período, con la actividad donde se logró cada marca |
+| `get_period_summary` | Resumen agregado de un rango de fechas: volumen, carga, desglose por deporte y evolución de CTL/ATL |
 | `list_activities` | Lista de actividades registradas (por defecto, últimos 90 días) |
 | `get_activity` | Detalle completo de una actividad, con intervalos/laps |
 | `get_activity_streams` | Series de tiempo (potencia, FC, cadencia, altitud, GPS) de una actividad, con downsampling automático |

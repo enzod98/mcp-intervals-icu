@@ -36,6 +36,9 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
     public Task<string> ListGearAsync(CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/gear", ct);
 
+    public Task<string> GetPaceCurvesRawAsync(string sportType, string curves, CancellationToken ct = default) =>
+        GetAsync($"athlete/{AthleteId}/pace-curves.json" + BuildQuery(("type", sportType), ("curves", curves)), ct);
+
     public Task<string> UpdateAthleteProfileAsync(
         string? name,
         double? weight,
