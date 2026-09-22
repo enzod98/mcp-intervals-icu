@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -7,6 +8,15 @@ namespace IntervalsMcp;
 
 /// <summary>Configuración del servidor que no forma parte del cliente HTTP en sí.</summary>
 public record IntervalsIcuOptions(string AthleteId);
+
+/// <summary>Un evento a crear como parte de una carga en lote con <see cref="IntervalsIcuClient.BatchCreateEventsAsync"/>.</summary>
+public record EventInput(
+    [property: Description("Fecha y hora local de inicio, formato ISO-8601 (ej. 2026-09-10T07:00:00).")] string StartDateLocal,
+    [property: Description("Nombre del evento, ej. \"Series 400m x8\".")] string Name,
+    [property: Description("Categoría del evento: WORKOUT (entreno planificado), NOTE, RACE_A/RACE_B/RACE_C, TARGET, etc.")] string Category = "WORKOUT",
+    [property: Description("Tipo de deporte, ej. Run, Ride, Swim. Necesario si category es WORKOUT.")] string? Type = null,
+    [property: Description("Descripción o estructura del entreno (sintaxis de Intervals.icu), o texto libre si category es NOTE.")] string? Description = null,
+    [property: Description("Id externo propio para referenciar este evento después.")] string? ExternalId = null);
 
 /// <summary>
 /// Envoltorio delgado sobre la API REST de Intervals.icu (https://intervals.icu/api/v1).
@@ -22,6 +32,9 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
 
     public Task<string> GetSportSettingsAsync(CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/sport-settings", ct);
+
+    public Task<string> ListGearAsync(CancellationToken ct = default) =>
+        GetAsync($"athlete/{AthleteId}/gear", ct);
 
     public Task<string> UpdateAthleteProfileAsync(
         string? name,
@@ -173,6 +186,41 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
     public Task<string> GetWellnessAsync(string date, CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/wellness/{date}", ct);
 
+    public Task<string> UpdateWellnessAsync(
+        string date,
+        double? weight,
+        int? restingHr,
+        double? hrv,
+        int? sleepSecs,
+        double? sleepScore,
+        int? soreness,
+        int? fatigue,
+        int? stress,
+        int? mood,
+        int? motivation,
+        int? injury,
+        int? steps,
+        string? comments,
+        CancellationToken ct = default)
+    {
+        var changes = new Dictionary<string, object?>();
+        if (weight is not null) changes["weight"] = weight;
+        if (restingHr is not null) changes["restingHR"] = restingHr;
+        if (hrv is not null) changes["hrv"] = hrv;
+        if (sleepSecs is not null) changes["sleepSecs"] = sleepSecs;
+        if (sleepScore is not null) changes["sleepScore"] = sleepScore;
+        if (soreness is not null) changes["soreness"] = soreness;
+        if (fatigue is not null) changes["fatigue"] = fatigue;
+        if (stress is not null) changes["stress"] = stress;
+        if (mood is not null) changes["mood"] = mood;
+        if (motivation is not null) changes["motivation"] = motivation;
+        if (injury is not null) changes["injury"] = injury;
+        if (steps is not null) changes["steps"] = steps;
+        if (comments is not null) changes["comments"] = comments;
+
+        return SendJsonAsync(HttpMethod.Put, $"athlete/{AthleteId}/wellness/{date}", changes, ct);
+    }
+
     public Task<string> ListEventsAsync(string? oldest, string? newest, CancellationToken ct = default) =>
         GetAsync($"athlete/{AthleteId}/events" + BuildQuery(("oldest", oldest), ("newest", newest)), ct);
 
@@ -193,6 +241,25 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         if (externalId is not null) payload["external_id"] = externalId;
 
         return SendJsonAsync(HttpMethod.Post, $"athlete/{AthleteId}/events", payload, ct);
+    }
+
+    public Task<string> BatchCreateEventsAsync(EventInput[] events, CancellationToken ct = default)
+    {
+        var payload = events.Select(e =>
+        {
+            var dict = new Dictionary<string, object?>
+            {
+                ["start_date_local"] = e.StartDateLocal,
+                ["name"] = e.Name,
+                ["category"] = e.Category,
+            };
+            if (e.Type is not null) dict["type"] = e.Type;
+            if (e.Description is not null) dict["description"] = e.Description;
+            if (e.ExternalId is not null) dict["external_id"] = e.ExternalId;
+            return dict;
+        }).ToArray();
+
+        return SendJsonAsync(HttpMethod.Post, $"athlete/{AthleteId}/events/bulk", payload, ct);
     }
 
     public Task<string> UpdateEventAsync(

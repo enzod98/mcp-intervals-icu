@@ -14,6 +14,10 @@ public static class AthleteTools
     public static Task<string> GetSportSettings(IntervalsIcuClient client, CancellationToken ct = default) =>
         client.GetSportSettingsAsync(ct);
 
+    [McpServerTool, Description("Lista el equipo (zapatillas, bicicletas) del atleta en Intervals.icu, con kilometraje y horas acumuladas de cada uno.")]
+    public static Task<string> ListGear(IntervalsIcuClient client, CancellationToken ct = default) =>
+        client.ListGearAsync(ct);
+
     [McpServerTool, Description(
         "Actualiza datos básicos del perfil del atleta en Intervals.icu (nombre, peso, sexo, ubicación, zona horaria, bio). " +
         "Solo se modifican los campos que se pasan. No toca configuración de integraciones (Garmin/Strava/etc), credenciales ni preferencias de notificaciones.")]

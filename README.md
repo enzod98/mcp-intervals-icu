@@ -72,6 +72,7 @@ de pasar por `dotnet run`.
 | `get_sport_settings` | Zonas de potencia/FC/ritmo y FTP/LTHR por deporte |
 | `update_athlete_profile` | Actualiza nombre, peso, sexo, ubicación, zona horaria o bio del atleta |
 | `update_sport_settings` | Actualiza LTHR, FC máxima, zonas de FC, ritmo/potencia de umbral y sweet spot de un deporte puntual |
+| `list_gear` | Equipo del atleta (zapatillas, bicicletas) con kilometraje y horas acumuladas |
 | `list_activities` | Lista de actividades registradas (por defecto, últimos 90 días) |
 | `get_activity` | Detalle completo de una actividad, con intervalos/laps |
 | `get_activity_streams` | Series de tiempo (potencia, FC, cadencia, altitud, GPS) de una actividad, con downsampling automático |
@@ -80,9 +81,11 @@ de pasar por `dotnet run`.
 | `add_activity_note` | Deja un comentario/nota privada en una actividad — usar para notas personales, no `update_activity`'s `description` |
 | `list_wellness` | HRV, FC en reposo, sueño, peso, CTL/ATL/ramp rate por rango de fechas |
 | `get_wellness` | Entrada de wellness de una fecha puntual |
+| `update_wellness` | Registra un check-in diario: peso, sueño, dolor muscular, fatiga, estrés, ánimo, motivación |
 | `list_events` | Eventos planificados en el calendario (próximos entrenos, carreras) |
 | `get_event` | Detalle de un evento puntual del calendario |
 | `create_event` | Crea un entreno planificado, carrera o nota en el calendario |
+| `batch_create_events` | Crea varios eventos de una sola vez (ej. una semana completa de entrenos) |
 | `update_event` | Actualiza un evento existente (solo los campos que se pasan) |
 | `delete_event` | Elimina un evento del calendario (no se puede deshacer) |
 

@@ -37,6 +37,15 @@ public static class EventTools
         CancellationToken ct = default)
         => client.CreateEventAsync(startDateLocal, name, category, type, description, externalId, ct);
 
+    [McpServerTool, Description(
+        "Crea varios eventos de una sola vez en el calendario de Intervals.icu (ej. toda una semana de entrenos). " +
+        "Más eficiente que llamar create_event repetidamente para cada uno.")]
+    public static Task<string> BatchCreateEvents(
+        IntervalsIcuClient client,
+        [Description("Lista de eventos a crear.")] EventInput[] events,
+        CancellationToken ct = default)
+        => client.BatchCreateEventsAsync(events, ct);
+
     [McpServerTool, Description("Actualiza un evento existente del calendario en Intervals.icu. Solo se modifican los campos que se pasan; el resto queda sin cambios.")]
     public static Task<string> UpdateEvent(
         IntervalsIcuClient client,
