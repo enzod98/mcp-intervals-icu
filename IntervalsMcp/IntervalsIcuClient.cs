@@ -303,6 +303,84 @@ public class IntervalsIcuClient(HttpClient http, IntervalsIcuOptions options)
         return string.IsNullOrWhiteSpace(body) ? $"{{\"deleted\":true,\"id\":{eventId}}}" : body;
     }
 
+    public Task<string> ListWorkoutsAsync(CancellationToken ct = default) =>
+        GetAsync($"athlete/{AthleteId}/workouts", ct);
+
+    public Task<string> GetWorkoutAsync(long workoutId, CancellationToken ct = default) =>
+        GetAsync($"athlete/{AthleteId}/workouts/{workoutId}", ct);
+
+    public Task<string> ListFoldersAsync(CancellationToken ct = default) =>
+        GetAsync($"athlete/{AthleteId}/folders", ct);
+
+    public async Task<string> CreateWorkoutAsync(string name, string type, string? description, long? folderId, CancellationToken ct = default)
+    {
+        // Intervals.icu exige que todo workout de la biblioteca pertenezca a una carpeta (probado
+        // empíricamente: 422 "Folder is required" si se omite). Si no se especifica una, reusamos
+        // la primera carpeta simple ("FOLDER", no un plan de entrenamiento) que exista, o creamos
+        // una por defecto llamada "Workouts" si el atleta todavía no tiene ninguna.
+        var resolvedFolderId = folderId ?? await ResolveDefaultFolderIdAsync(ct);
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["name"] = name,
+            ["type"] = type,
+            ["folder_id"] = resolvedFolderId,
+        };
+        if (description is not null) payload["description"] = description;
+
+        return await SendJsonAsync(HttpMethod.Post, $"athlete/{AthleteId}/workouts", payload, ct);
+    }
+
+    private async Task<long> ResolveDefaultFolderIdAsync(CancellationToken ct)
+    {
+        var foldersJson = await GetAsync($"athlete/{AthleteId}/folders", ct);
+        if (JsonNode.Parse(foldersJson) is JsonArray folders)
+        {
+            foreach (var folder in folders)
+            {
+                if (folder is JsonObject f &&
+                    f["type"]?.GetValue<string>() == "FOLDER" &&
+                    f["id"] is JsonValue idValue && idValue.TryGetValue<long>(out var existingId))
+                {
+                    return existingId;
+                }
+            }
+        }
+
+        var created = await SendJsonAsync(
+            HttpMethod.Post, $"athlete/{AthleteId}/folders", new Dictionary<string, object?> { ["name"] = "Workouts", ["type"] = "FOLDER" }, ct);
+        if (JsonNode.Parse(created) is JsonObject createdFolder &&
+            createdFolder["id"] is JsonValue createdIdValue && createdIdValue.TryGetValue<long>(out var createdId))
+        {
+            return createdId;
+        }
+
+        throw new McpException("No se pudo crear ni encontrar una carpeta de workouts en Intervals.icu.");
+    }
+
+    public Task<string> UpdateWorkoutAsync(long workoutId, string? name, string? type, string? description, CancellationToken ct = default)
+    {
+        var payload = new Dictionary<string, object?>();
+        if (name is not null) payload["name"] = name;
+        if (type is not null) payload["type"] = type;
+        if (description is not null) payload["description"] = description;
+
+        return SendJsonAsync(HttpMethod.Put, $"athlete/{AthleteId}/workouts/{workoutId}", payload, ct);
+    }
+
+    public async Task<string> DeleteWorkoutAsync(long workoutId, CancellationToken ct = default)
+    {
+        var response = await http.DeleteAsync($"athlete/{AthleteId}/workouts/{workoutId}", ct);
+        var body = await response.Content.ReadAsStringAsync(ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new McpException(
+                $"La solicitud a la API de Intervals.icu para borrar el workout {workoutId} falló con {(int)response.StatusCode} {response.ReasonPhrase}: {Truncate(body)}");
+        }
+
+        return string.IsNullOrWhiteSpace(body) ? $"{{\"deleted\":true,\"id\":{workoutId}}}" : body;
+    }
+
     private async Task<string> GetAsync(string requestUri, CancellationToken ct)
     {
         var response = await http.GetAsync(requestUri, ct);

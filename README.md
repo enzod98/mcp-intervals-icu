@@ -92,6 +92,12 @@ de pasar por `dotnet run`.
 | `batch_create_events` | Crea varios eventos de una sola vez (ej. una semana completa de entrenos) |
 | `update_event` | Actualiza un evento existente (solo los campos que se pasan) |
 | `delete_event` | Elimina un evento del calendario (no se puede deshacer) |
+| `list_folders` | Lista las carpetas de la biblioteca de workouts |
+| `list_workouts` | Lista los workouts guardados como plantillas reutilizables (no eventos agendados) |
+| `get_workout` | Detalle de un workout guardado en la biblioteca |
+| `create_workout` | Guarda una plantilla de entreno reutilizable (ej. "Intervalos de pista", "Cuestas") |
+| `update_workout` | Actualiza una plantilla guardada (solo los campos que se pasan) |
+| `delete_workout` | Elimina una plantilla de la biblioteca (no se puede deshacer) |
 
 Todas devuelven el JSON crudo de la API de Intervals.icu (salvo `get_activity_streams`, que
 recorta streams largos a un máximo configurable de puntos para no saturar el contexto).
@@ -120,6 +126,15 @@ Intervals.icu tiene dos campos de texto distintos para una actividad, y es fáci
 
 Para notas personales de entrenamiento (sensaciones, fallas de sensores, RPE subjetivo, etc.) usar
 `add_activity_note`, no el `description` de `update_activity`.
+
+### Biblioteca de workouts vs. calendario
+
+`create_workout` guarda una **plantilla** reutilizable en la biblioteca de Intervals.icu — no la
+agenda en el calendario. Para usarla en una fecha concreta, hay que copiar su `description` (la
+estructura) al llamar `create_event`. Intervals.icu exige que todo workout de la biblioteca
+pertenezca a una carpeta (`422 "Folder is required"` si se omite, confirmado empíricamente); si no
+se especifica `folderId`, `create_workout` reusa la primera carpeta existente o crea una llamada
+"Workouts" automáticamente.
 
 ### `get_race_predictions` no es un endpoint de Intervals.icu
 
